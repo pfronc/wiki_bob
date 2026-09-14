@@ -1,3 +1,15 @@
+# Command: index-update
+
+Usage: `/index-update`
+
+Purpose: Update or rebuild the `index/*` files to include new pages and keep token estimates within limits.
+
+Procedure:
+1. Scan `wiki/` and `raw/` for new or changed pages.
+2. Add missing entries to the current `index_*.md` under appropriate categories.
+3. If an index exceeds token limit, create a new `index_XXX.md` and move recent entries.
+4. Add navigation links between index files.
+5. Commit changes to index files and append a log entry.
 ---
 description: WIKI Index Maintenance
 ---

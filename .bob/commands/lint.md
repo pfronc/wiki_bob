@@ -1,3 +1,16 @@
+# Command: lint
+
+Usage: `/lint`
+
+Purpose: Run a health check of the wiki to find broken links, orphan pages, missing metadata, and index size issues.
+
+Procedure:
+1. Scan `wiki/` for pages missing required elements (title, summary, sources, timestamp).
+2. Check cross-references; report unidirectional or broken links.
+3. Compute approximate token/line counts for `index/*` and flag files >10000 tokens (estimate by lines/words).
+4. Produce a `wiki/lint-report.md` (or return inline) listing issues and suggested fixes.
+
+Action: Do not auto-fix destructive changes; propose fixes and await user approval.
 ---
 description: WIKI Health Check
 ---

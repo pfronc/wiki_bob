@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Wrapper for bob_runner.py to provide a shorter `bob` CLI.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+python3 "$SCRIPT_DIR/bob_runner.py" "$@"

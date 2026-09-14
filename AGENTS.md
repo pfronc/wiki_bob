@@ -4,7 +4,7 @@
 
 ### 1.1 Role Definition
 - **User**: Curator of source materials, query initiator, workflow supervisor
-- **Agent**: AI librarian managing wiki content, maintaining consistency, answering queries
+- **Agent**: AI librarian managing wiki content, maintaining consistency, answering queries. Agents should respond in English for all user-facing text unless the user explicitly requests another language.
 
 ### 1.2 Directory Structure
 
@@ -21,10 +21,66 @@
 ```
 
 #### Ownership Rules
-- **raw/**: User exclusively (Agent: read-only)
+- **raw/**: User exclusively (Agent: read-only — never write here)
 - **wiki/**: Agent exclusively (User: read-only)
 - **index/**: Agent exclusively (User: read-only)
 - **log.md**: Agent maintains (User: read-only)
+
+### 1.3 Automation Tool
+
+Bob uses [`tools/bob_runner.py`](tools/bob_runner.py) for structural scaffolding. There is also a [`tools/bob`](tools/bob) shell wrapper that delegates directly to the runner — make it executable and add `tools/` to PATH for the shorter `bob ...` form:
+
+```bash
+chmod +x tools/bob
+export PATH="$PWD/tools:$PATH"
+```
+
+**Available Commands**:
+```bash
+# Ingest - Scaffold a source page from a raw/ file
+python3 tools/bob_runner.py ingest --source example.md
+
+# Query - Search index for keyword matches (returns candidates only)
+python3 tools/bob_runner.py query --question "What is transformer"
+
+# Create-page - Generate a page skeleton from template
+python3 tools/bob_runner.py create-page --type concept --title "My Concept" --filename my-concept.md
+# Types: entity, concept, source, analysis
+
+# Lint - Check wiki for missing headings/timestamps
+python3 tools/bob_runner.py lint
+
+# Index-update - Ensure index file exists
+python3 tools/bob_runner.py index-update
+```
+
+**What bob_runner.py actually does (and does NOT do)**:
+
+The runner is intentionally minimal — it creates scaffolding only. The agent is responsible for all content, cross-references, enrichment, and maintenance that the runner does not perform.
+
+| Command | Runner does | Agent must add |
+|---------|-------------|----------------|
+| `ingest` | Creates `wiki/sources/[slug].md` with first 10 lines of raw file as Summary; adds one entry under `## Sources` in the index; appends a log stub | Replace stub Summary with real analysis; create entity/concept pages; add all cross-references |
+| `query` | Keyword-searches index lines starting with `- ` (words >3 chars); prints up to 10 matches | Read actual wiki pages; synthesize answer; optionally preserve as analysis |
+| `create-page` | Writes minimal skeleton file | Fill all sections; establish bidirectional links; update index and log |
+| `lint` | Checks every `.md` in `wiki/` for a `# ` heading and one of the exact strings `Last updated` / `Ingested` / `Created:` | Check broken links, orphan pages, contradictions, missing concepts |
+| `index-update` | Creates `index/index_001.md` if it doesn't exist; does nothing else | Scan wiki, populate/sync all index entries, split if over token limit |
+
+**Critical runner behaviours to know**:
+
+- **`ingest` summary** is the raw file's first 10 lines verbatim — always replace it with a proper analysis.
+- **`ingest` on duplicate** adds a `YYYYMMDDHHMMSS` timestamp suffix to the filename rather than failing.
+- **`create-page` on duplicate** exits with status 1 and does not create a file — check the index first.
+- **`find_index_file()`** picks the **highest-numbered** index file (e.g. `index_002.md` over `index_001.md`). New entries are inserted immediately after the `## Sources` heading in that file. After a split, `ingest` correctly writes into the newest index.
+- **`create-page` folder mapping**: type `analysis` → `wiki/analyses/`, `entity` → `wiki/entities/`, `concept` → `wiki/concepts/`, `source` → `wiki/sources/` (all plural).
+- **`lint` timestamp check** matches any of these exact strings: `Last updated`, `Ingested`, `Created:` (note the colon on `Created:`). Any other wording is flagged as missing metadata.
+- **log operation type** written by the runner for `create-page` actions is `create-page` (not in the original list of types — see §6.1).
+
+**Bob's Usage Pattern**:
+1. Execute automation for structure/boilerplate
+2. Read created file
+3. Enrich with analysis and cross-references
+4. Update related pages with bidirectional links
 
 ---
 
@@ -33,29 +89,44 @@
 ### 2.1 INGEST
 **Purpose**: Process new source from `raw/` into wiki Pages
 
-**Flow**: Read source → Discuss takeaways with User → Create/update Pages → Update index → Log
+**Command**: `/ingest [source-file]` → See [`.bob/commands/ingest.md`](.bob/commands/ingest.md) for detailed procedure
 
-**Impact**: Typically touches 10-15 Pages per source
-
-**Command**: `/ingest [source-file]` (see [slug: ingest](.bob/custom_mode.yaml) for detailed procedure)
+**Key principle**: Read source → Discuss takeaways with User → Create/update Pages → Update index → Log
 
 ### 2.2 QUERY
 **Purpose**: Answer questions using wiki content, optionally preserve valuable answers
 
-**Flow**: Search index → Read relevant Pages → Synthesize answer → Assess preservation value → Create analysis Page if valuable
+**Command**: `/query [question]` → See [`.bob/commands/query.md`](.bob/commands/query.md) for detailed procedure
 
 **Preservation criteria**: Synthesizes 3+ Pages, reveals connections, comparison, or User requests
-
-**Command**: `/query [question]` (see [slug: query](.bob/custom_mode.yaml) for detailed procedure)
 
 ### 2.3 LINT
 **Purpose**: Health-check wiki for contradictions, orphans, missing concepts, broken links
 
-**Flow**: Scan all Pages → Identify issues → Generate report → User prioritizes → Agent fixes
+**Command**: `/lint` → See [`.bob/commands/lint.md`](.bob/commands/lint.md) for detailed procedure
 
 **Frequency**: Monthly recommended
 
-**Command**: `/lint` (see [/lint](.bob/commands/lint.md) for detailed procedure)
+### 2.4 CREATE-PAGE
+**Purpose**: Create new wiki page with proper template and cross-references
+
+**Command**: `/create-page [type]` → See [`.bob/commands/create-page.md`](.bob/commands/create-page.md) for detailed procedure
+
+**Types**: entity, concept, source, analysis
+
+### 2.5 INDEX-UPDATE
+**Purpose**: Maintain index files, ensure completeness, handle splitting
+
+**Command**: `/index-update` → See [`.bob/commands/index-update.md`](.bob/commands/index-update.md) for detailed procedure
+
+**When**: After bulk changes or monthly verification
+
+### 2.6 RESEARCH
+**Purpose**: Investigate a topic by combining wiki knowledge with external sources
+
+**Command**: `/research [topic or question]` → See [`.bob/commands/research.md`](.bob/commands/research.md) for detailed procedure
+
+**Key principle**: Check wiki first → supplement with external browsing if allowed → synthesize with citations → optionally preserve as analysis page
 
 ---
 
@@ -65,7 +136,7 @@
 - Use `kebab-case-descriptive-name.md`
 - Be specific and descriptive
 - Use lowercase only
-- Avoid special characters
+- Avoid special characters (the `kebab()` function strips everything except `[a-z0-9\s-]`)
 
 **Examples**:
 - `openai.md`, `geoffrey-hinton.md` (entities)
@@ -81,143 +152,13 @@
 - [ ] Sources section (## Sources)
 - [ ] Last updated timestamp
 
-### 3.3 Entity Page Template
+### 3.3 Page Templates
 
-```markdown
-# Entity Name
-
-**Type**: Person | Organization | Product | Location
-**First mentioned**: [Source](link)
-**Related concepts**: [Concept 1](link), [Concept 2](link)
-
-## Summary
-One paragraph overview.
-
-## Key Information
-- Attribute 1: Value
-- Attribute 2: Value
-
-## Mentions in Sources
-- [Source 1](link) - Context of mention
-- [Source 2](link) - Context of mention
-
-## Related Pages
-- [Related Entity](link) - Nature of relationship
-- [Related Concept](link) - How they connect
-
-## Sources
-1. [Source Title](link) - Date
-
----
-*Last updated: YYYY-MM-DD*
-```
-
-### 3.4 Concept Page Template
-
-```markdown
-# Concept Name
-
-**Category**: Theory | Method | Framework | Principle
-**First introduced**: [Source](link)
-**Related concepts**: [Concept 1](link), [Concept 2](link)
-
-## Definition
-Clear, concise definition in 1-2 sentences.
-
-## Explanation
-Detailed explanation with examples.
-
-## Key Aspects
-- Aspect 1: Description
-- Aspect 2: Description
-
-## Applications
-Where and how this concept is used.
-
-## Related Entities
-- [Entity](link) - How they relate
-
-## Related Pages
-- [Related Concept](link) - Nature of relationship
-- [Analysis](link) - Where this concept was explored
-
-## Sources
-1. [Source Title](link) - Date - Key contribution
-
-## External References
-- [External Resource](URL) - Description
-
----
-*Last updated: YYYY-MM-DD*
-```
-
-### 3.5 Source Page Template
-
-```markdown
-# Source: Title
-
-**Type**: Article | Book | Paper | Video | Podcast
-**Date**: YYYY-MM-DD
-**Author**: Name
-**Original location**: `raw/filename.ext`
-
-## Summary
-2-3 paragraph summary of main points.
-
-## Key Takeaways
-- Takeaway 1
-- Takeaway 2
-- Takeaway 3
-
-## Entities Mentioned
-- [Entity 1](link) - Context
-- [Entity 2](link) - Context
-
-## Concepts Discussed
-- [Concept 1](link) - How discussed
-- [Concept 2](link) - How discussed
-
-## Notable Quotes
-> Quote 1
-
-> Quote 2
-
-## Related Sources
-- [Source](link) - Relationship (contradicts, supports, extends)
-
----
-*Ingested: YYYY-MM-DD*
-```
-
-### 3.6 Analysis Page Template
-
-```markdown
-# Analysis: Title
-
-**Type**: Comparison | Synthesis | Deep Dive
-**Date**: YYYY-MM-DD
-**Origin**: Query | Lint | User request
-
-## Question
-Original question or prompt.
-
-## Answer
-Comprehensive answer with sections as needed.
-
-## Sources Consulted
-- [Page 1](link)
-- [Page 2](link)
-
-## Key Insights
-- Insight 1
-- Insight 2
-
-## Related Analyses
-- [Analysis](link) - Relationship
-
----
-*Created: YYYY-MM-DD*
-```
+Full templates are defined in [`.bob/commands/create-page.md`](.bob/commands/create-page.md). Key requirements:
+- Entity pages: Type, first mention, key information, mentions in sources
+- Concept pages: Category, definition, explanation, applications, external references
+- Source pages: Type, date, author, summary, takeaways, entities/concepts mentioned
+- Analysis pages: Type, date, origin, question, answer, sources consulted, insights
 
 ---
 
@@ -232,10 +173,17 @@ Comprehensive answer with sections as needed.
 ### 4.2 Link Format
 `[Display Text](relative/path/to/page.md)`
 
-**Example**:
+Links within wiki pages use paths **relative to the file's own location**. Links inside index files use paths relative to the `index/` directory (e.g. `../wiki/concepts/foo.md`).
+
+**Example in a wiki page**:
 ```markdown
 ## Related Pages
 - [Machine Learning](../concepts/machine-learning.md) - Uses neural networks as core technique
+```
+
+**Example in an index entry**:
+```markdown
+- [Machine Learning](../wiki/concepts/machine-learning.md) - One-line description [sources: 2]
 ```
 
 ### 4.3 Link Maintenance
@@ -264,17 +212,19 @@ Total Pages: XXX
 Token count: ~XXXX
 
 ## Entities
-- [Entity Name](wiki/entities/entity-name.md) - One-line description [sources: X]
+- [Entity Name](../wiki/entities/entity-name.md) - One-line description [sources: X]
 
 ## Concepts
-- [Concept Name](wiki/concepts/concept-name.md) - One-line description [sources: X]
+- [Concept Name](../wiki/concepts/concept-name.md) - One-line description [sources: X]
 
 ## Sources
-- [Source Title](wiki/sources/source-title.md) - Date, type [entities: X, concepts: Y]
+- [Source Title](../wiki/sources/source-title.md) - Date, type [entities: X, concepts: Y]
 
 ## Analyses
-- [Analysis Title](wiki/analyses/analysis-title.md) - Date, query summary
+- [Analysis Title](../wiki/analyses/analysis-title.md) - Date, query summary
 ```
+
+> **Note**: Index paths use `../wiki/` prefix (relative from `index/`). The runner's auto-inserted entries use bare `wiki/` paths — correct these when enriching.
 
 ### 5.2 Index Splitting Rules
 
@@ -284,11 +234,13 @@ Token count: ~XXXX
 1. Create `index_XXX+1.md`
 2. Move newest ~2000 tokens to new index
 3. Keep ~8000 tokens in old index
-4. Add navigation links:
+4. Add navigation links to both files:
    ```markdown
    Previous: [index_001.md](index_001.md)
    Next: [index_003.md](index_003.md)
    ```
+
+> **Note**: After splitting, `bob_runner.py ingest` inserts into the highest-numbered index file, which is the most recently created one. No manual move is needed.
 
 ### 5.3 Update Frequency
 - After every ingest
@@ -319,7 +271,9 @@ Key outcomes:
 - Outcome 2
 ```
 
-**Operation types**: `ingest`, `query`, `lint`, `fix`, `reorg`
+**Operation types**: `ingest`, `query`, `lint`, `fix`, `reorg`, `create-page`
+
+> Note: `bob_runner.py` writes `create-page` as the operation type for that command. The runner's log entries contain `Brief: automated by bob_runner.py` and a minimal outcomes line — always expand these with real context when enriching.
 
 ### 6.2 Log Parsing Examples
 
@@ -341,13 +295,13 @@ grep "^## \[2026-05-24" log.md -A 10 | grep "wiki/"
 ### 7.1 Page Quality
 Before finalizing any Page:
 - [ ] Title is clear and descriptive
-- [ ] Summary paragraph exists
+- [ ] Summary paragraph exists (not a raw-file excerpt)
 - [ ] All sections have content
 - [ ] At least 2 cross-references (unless isolated)
 - [ ] At least 1 source citation
-- [ ] Last updated timestamp present
+- [ ] Timestamp present using an exact accepted string: `Last updated`, `Ingested`, or `Created:`
 - [ ] Markdown formatting correct
-- [ ] Links use relative paths
+- [ ] Links use relative paths appropriate to file location
 - [ ] No typos in key terms
 
 ### 7.2 Index Quality
@@ -357,15 +311,16 @@ Before updating index:
 - [ ] Metadata included (source count, date)
 - [ ] Alphabetical order within categories
 - [ ] Token count noted
+- [ ] Paths use `../wiki/` prefix (relative from `index/`)
 - [ ] Navigation links present (if multiple indices)
 
 ### 7.3 Log Quality
 Before appending to log:
-- [ ] Date in ISO format [YYYY-MM-DD]
-- [ ] Operation type specified
+- [ ] Date in ISO format [YYYY-MM-DD HH:MM]
+- [ ] Operation type specified (valid types in §6.1)
 - [ ] Title/description clear
 - [ ] Affected Pages listed with links
-- [ ] Key outcomes summarized
+- [ ] Key outcomes summarized (not just "automated operation")
 
 ---
 
@@ -411,7 +366,7 @@ Current index token count > 10000?
 **For queries**:
 1. Read index first (lightweight)
 2. Identify 5-10 candidate Pages
-3. Read candidates in single batch
+3. Read candidates in single batch (up to 5 at once)
 4. Follow cross-references only if needed
 
 **For ingests**:
@@ -463,15 +418,90 @@ Current index token count > 10000?
 
 ## 11. Slash Commands Reference
 
-For detailed operational procedures, use these commands:
+Bob executes operations using [`tools/bob_runner.py`](tools/bob_runner.py) for scaffolding. The [`tools/bob`](tools/bob) shell wrapper (already executable) provides a shorter CLI — use it by running `export PATH="$PWD/tools:$PATH"` first. Each command has a detailed procedure file in `.bob/commands/`.
 
-- `/ingest [source-file]` - Process new source into wiki
-- `/query [question]` - Answer question with wiki content
-- `/lint` - Run wiki health check (see [/lint](.bob/commands/lint.md))
-- `/index-update` - Manually update index files (see [/index-update](.bob/commands/index-update.md))
-- `/create-page [type]` - Create new page with template
+### Command Reference Table
 
-See individual command definitions for step-by-step procedures.
+> **Prerequisite**: `export PATH="$PWD/tools:$PATH"` (or `python3 tools/bob_runner.py` as fallback)
+
+| Slash Command | Automation Command | Procedure File |
+|--------------|-------------------|----------------|
+| `/ingest [file]` | `bob ingest --source [file]` | [`.bob/commands/ingest.md`](.bob/commands/ingest.md) |
+| `/query [question]` | `bob query --question "[question]"` | [`.bob/commands/query.md`](.bob/commands/query.md) |
+| `/create-page [type]` | `bob create-page --type [type] --title "[title]" --filename [name].md` | [`.bob/commands/create-page.md`](.bob/commands/create-page.md) |
+| `/lint` | `bob lint` | [`.bob/commands/lint.md`](.bob/commands/lint.md) |
+| `/index-update` | `bob index-update` | [`.bob/commands/index-update.md`](.bob/commands/index-update.md) |
+| `/research [topic]` | `bob research` *(prints procedure path; no scaffolding)* | [`.bob/commands/research.md`](.bob/commands/research.md) |
+| `/status` | `bob status` | skill only — no separate command file |
+| `/raw-list [--pending-only]` | `bob raw-list [--pending-only]` | skill only — no separate command file |
+| `/move --from [path] --to [path]` | `bob move --from [path] --to [path]` | skill only — no separate command file |
+
+### Execution Pattern
+
+1. **User invokes**: `/ingest paper.md`
+2. **Bob runs scaffolding**: `bob ingest --source paper.md`
+3. **Bob reads created file**: confirms what the runner produced
+4. **Bob follows procedure**: reads `.bob/commands/ingest.md` for enrichment steps
+5. **Bob adds intelligence**: real analysis, cross-references, relationships, expanded log entry
+
+**Key principle**: Automation creates minimal structure → Bob adds all intelligence
+
+---
+
+## 12. Runner Error Handling
+
+### 12.1 What to Do When `bob_runner.py` Produces an Error
+
+If [`tools/bob_runner.py`](tools/bob_runner.py) exits with a non-zero status code, prints a Python traceback, or produces output that indicates incorrect behaviour (wrong paths, missing files, unexpected content), treat it as a bug and follow this procedure — **do not silently work around it**.
+
+**Step 1 — Report clearly**
+
+Tell the user immediately:
+- What command was run (full invocation).
+- What the runner printed (stdout + stderr, verbatim).
+- What the expected outcome was vs what actually happened.
+
+Example phrasing:
+> "`bob ingest --source paper.md` failed with the following output:
+> ```
+> [paste output here]
+> ```
+> This looks like a bug in `tools/bob_runner.py`. Would you like me to analyse it and propose a fix?"
+
+**Step 2 — Ask for permission before touching the runner**
+
+Wait for explicit user approval before reading or editing [`tools/bob_runner.py`](tools/bob_runner.py). Do not attempt a silent fix.
+
+**Step 3 — Analyse (only after approval)**
+
+1. Read [`tools/bob_runner.py`](tools/bob_runner.py) and identify the defective function.
+2. Reproduce the failure mentally by tracing the relevant code path.
+3. Propose a minimal fix with a clear explanation of what is wrong and why the fix is correct.
+4. Show the diff before applying it and ask for a final confirmation.
+
+**Step 4 — Apply and verify**
+
+1. Apply the approved fix using `apply_diff`.
+2. Re-run the original failing command to confirm it now succeeds.
+3. Log the fix under operation type `fix` in `log.md`.
+
+### 12.2 Distinguishing Runner Bugs from Usage Errors
+
+Not every failure is a bug. Check these first before escalating:
+
+| Symptom | Likely cause | Action |
+|---------|--------------|--------|
+| `Source file not found` | Wrong filename or not placed in `raw/` | Tell user to check the path |
+| `File exists: will not overwrite` | Duplicate ingest / page already exists | Expected behaviour — proceed manually |
+| `move requires --from and --to` | Missing CLI argument | Correct the invocation |
+| `Unknown command: …` | Typo in command name | Correct the invocation |
+| Python `Traceback` | Genuine bug | Follow §12.1 |
+| Output is structurally wrong (bad paths, missing sections) | Genuine bug | Follow §12.1 |
+
+### 12.3 Scope
+
+- Only [`tools/bob_runner.py`](tools/bob_runner.py) is covered by this protocol. Bugs in wiki page content, index files, or skill files are handled through normal editing — no special permission is required.
+- The runner is intentionally minimal. If a limitation is by design (see §1.3 "What bob_runner.py actually does"), note that to the user rather than filing it as a bug.
 
 ---
 
