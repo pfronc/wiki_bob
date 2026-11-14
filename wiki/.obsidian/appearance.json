@@ -1,5 +1,6 @@
 {
-  "cssTheme": "Sandstorm",
   "theme": "moonstone",
-  "baseFontSize": 17
+  "cssTheme": "Tokyo Night",
+  "accentColor": "#647b87",
+  "showRibbon": true
 }

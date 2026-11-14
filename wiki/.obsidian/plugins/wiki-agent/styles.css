@@ -1,0 +1,54 @@
+.quantum-wiki-agent-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+  min-height: 0;
+  padding: 0.75rem;
+}
+
+.quantum-wiki-agent-view .qwa-header h2 {
+  margin: 0 0 0.35rem;
+}
+
+.quantum-wiki-agent-view .qwa-header p {
+  color: var(--text-muted);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.quantum-wiki-agent-view .quantum-agent-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.quantum-wiki-agent-view .quantum-agent-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quantum-wiki-agent-view .quantum-agent-status {
+  color: var(--text-muted);
+  min-height: 1.5em;
+  margin: 0;
+}
+
+.quantum-wiki-agent-view .quantum-agent-output {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  border-top: 1px solid var(--background-modifier-border);
+  padding: 0.75rem 0.25rem;
+}
+
+.quantum-wiki-agent-view .quantum-agent-output > :first-child {
+  margin-top: 0;
+}
+
+.quantum-wiki-agent-view .quantum-agent-output pre {
+  white-space: pre-wrap;
+}

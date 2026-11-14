@@ -6,6 +6,90 @@ A structured knowledge management system for ingesting, organizing, and querying
 
 This WIKI system transforms raw source documents into an interconnected knowledge base of entities, concepts, and insights. It maintains bidirectional cross-references, tracks provenance, and enables powerful querying capabilities.
 
+## Setup
+
+### Prerequisites
+
+| Requirement | Purpose | Required? |
+|-------------|---------|-----------|
+| Python ≥ 3.10 | Runner, RAG, convert tools | **Yes** |
+| [Ollama](https://ollama.com) | Local embedding model (RAG) and optional local LLM | **Yes** (for RAG) |
+| `embeddinggemma` Ollama model | Sentence embeddings for hybrid BM25+vector retrieval | **Yes** (for RAG) |
+| A chat model (e.g. `gemma4:12b`) | Local answer generation (`bob-rag ask`, Obsidian wiki-agent) | Optional |
+
+### 1. Clone or copy the repository
+
+```bash
+cp -r wiki_bob_v3/ my-wiki/
+cd my-wiki/
+```
+
+### 2. Install Python dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+For PDF and DOCX extraction support (strongly recommended):
+
+```bash
+pip install pypdf python-docx
+```
+
+For non-text format conversion (`.pptx`, `.xlsx`, `.epub`, `.ipynb`, etc.):
+
+```bash
+pip install markitdown
+```
+
+### 3. Make the CLI wrapper executable and add it to your PATH
+
+```bash
+chmod +x tools/bob tools/bob-rag
+export PATH="$PWD/tools:$PATH"   # add to ~/.zshrc or ~/.bashrc to persist
+```
+
+Verify:
+
+```bash
+bob --help
+```
+
+### 4. Install Ollama and pull models
+
+Install Ollama from [https://ollama.com](https://ollama.com), then pull the required embedding model and your preferred chat model:
+
+```bash
+# Required: embedding model used by the RAG store
+ollama pull embeddinggemma
+
+# Optional: local LLM for `bob-rag ask` and the Obsidian wiki-agent plugin
+ollama pull gemma4:12b        # or any model Ollama supports
+```
+
+> **Without Ollama**: the RAG tool (`bob-rag`) degrades gracefully to BM25-only search. All other runner commands (`bob ingest`, `bob query`, `bob lint`, etc.) work without Ollama.
+
+### 5. Build the RAG index (optional, requires Ollama)
+
+After ingesting at least one source, build the local retrieval store:
+
+```bash
+bob-rag index --scope all
+bob-rag stats        # verify contents and embedding coverage
+```
+
+### 6. Open in Obsidian (optional)
+
+The `wiki/` folder is a self-contained Obsidian vault. Open it directly:
+
+1. Open Obsidian → **Open folder as vault** → select `wiki/`
+2. Enable community plugins when prompted (required for the wiki-agent plugin)
+3. The **Wiki Agent** plugin (`.obsidian/plugins/wiki-agent/`) lets you query wiki content via a local Ollama model directly from Obsidian — configure the endpoint and model in its settings panel (default: `http://localhost:11434`, model `gemma4:12b`)
+
+> The Obsidian vault is an **alternative reading and querying environment**. All canonical write operations (ingest, create-page, lint, index-update) must still go through the `bob` CLI or Bob AI agent — the Obsidian plugin is read-only.
+
+---
+
 ## Directory Structure
 
 ```
