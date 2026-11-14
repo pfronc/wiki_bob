@@ -8,7 +8,10 @@ Inputs:
 - `question` — user question or prompt.
 
 Procedure:
-1. Read `index/*.md` and identify 5–10 candidate pages by matching question keywords to titles/descriptions.
+1. Run `bob query --question "..."`. The runner searches every numbered index,
+   rejects broken or out-of-wiki targets, deduplicates page links, and returns up
+   to 10 candidates ranked by title, aliases, topic/summary keywords, recency,
+   source coverage, and graph proximity.
 2. Read candidate pages in batch (up to 5 at once) and extract relevant facts, quotes and citations. Track cross-references that may point to additional relevant pages.
 3. Synthesize the answer, formatted appropriately to the question type:
 	- Simple fact: direct answer with citations.
@@ -16,21 +19,22 @@ Procedure:
 	- Complex topic: structured sections with headings.
 	- Relationships: include a Mermaid diagram if helpful.
 
-	Example answer format:
+	Example answer format (links relative to the citing file, e.g. from `wiki/analyses/` use `../concepts/…`):
+
 	```markdown
 	## Answer: [Question]
 
 	[Main answer paragraph with citations]
 
 	### Key Points
-	- Point 1 [citation](wiki/path.md)
-	- Point 2 [citation](wiki/path.md)
+	- Point 1 [Concept](../concepts/example.md)
+	- Point 2 [Source](../sources/example.md), p. 42
 
 	### Related Information
 	[Additional context with citations]
 
 	---
-	**Sources consulted**: [Page 1](wiki/path.md), [Page 2](wiki/path.md)
+	**Sources consulted**: [Page 1](../concepts/example.md), [Page 2](../sources/example.md)
 	```
 
 4. Assess preservation value:

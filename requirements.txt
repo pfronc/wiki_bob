@@ -1,0 +1,3 @@
+# Notebook bridge and kernel dependencies
+jupyter_client
+ipykernel

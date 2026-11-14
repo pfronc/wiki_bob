@@ -1,3 +1,13 @@
 {
-    "python.languageServer": "None"
+  "python.languageServer": "Default",
+  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "python-envs.defaultPackageManager": "ms-python.python:pip",
+  "markdownlint.configFile": ".markdownlint.json",
+  "prettier.proseWrap": "preserve",
+  "prettier.printWidth": 120,
+  "[markdown]": {
+    "editor.wordWrap": "on",
+    "editor.formatOnSave": false,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
 }

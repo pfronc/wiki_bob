@@ -1,0 +1,14 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# macOS metadata
+.DS_Store
+
+# RAG derived store (rebuilt on demand)
+index/rag/rag.sqlite3
+
+# Obsidian workspace state
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json

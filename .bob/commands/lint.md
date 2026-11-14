@@ -2,232 +2,52 @@
 
 Usage: `/lint`
 
-Purpose: Run a health check of the wiki to find broken links, orphan pages, missing metadata, and index size issues.
+Purpose: Produce a deterministic, read-only health report for the managed wiki,
+generated indices, source registry, and persisted extraction state.
 
-Procedure:
-1. Scan `wiki/` for pages missing required elements (title, summary, sources, timestamp).
-2. Check cross-references; report unidirectional or broken links.
-3. Compute approximate token/line counts for `index/*` and flag files >10000 tokens (estimate by lines/words).
-4. Produce a `wiki/lint-report.md` (or return inline) listing issues and suggested fixes.
+## Procedure
 
-Action: Do not auto-fix destructive changes; propose fixes and await user approval.
----
-description: WIKI Health Check
----
-## When User requests: `/lint`
+1. Run `bob lint` from the repository root.
+2. Review the summary counts and paths in all eleven report categories:
+   - broken or malformed links in wiki Markdown and generated indices;
+   - page schema, frontmatter, required sections, and timestamps;
+   - literal pipes inside table-cell math (`$...$`) that break table rendering;
+   - missing, duplicate, stale, or incorrectly ordered index entries;
+   - managed pages with no inbound wiki link;
+   - `Related Pages` links without reciprocal `Related Pages` context;
+   - duplicate normalized titles, canonical titles, or aliases;
+   - claims or citations without a resolvable source page and location;
+   - raw files whose current SHA-256 differs from the registry;
+   - managed pages over 5,000 estimated tokens, indices over 10,000, or
+     persisted chunks over the configured chunk limit;
+   - persisted extraction chunks that have not been mapped.
+3. Review contradictions, staleness, missing concepts, and semantic index
+   descriptions manually; deterministic lint does not infer these safely.
+4. Return the report inline by default. Preserve a report in `wiki/analyses/`
+   only when it has durable value or the user requests preservation.
+5. Propose repairs and obtain user direction before changing claims, merging
+   pages, deleting duplicates, or reorganizing ambiguous relationships.
+6. Treat `Oversized files` as an advisory review prompt. Report which pages exceed
+   the threshold and what drives each size, then offer the user the options —
+   accept the warning (the default), raise `PAGE_WARNING_TOKENS` (a runner change;
+   follow `AGENTS.md` section 12 first), or split an over-broad page. Do not begin
+   compacting pages to satisfy the number, and never remove citations to reduce it.
+7. If fixes are approved, apply them, rebuild the index once, rerun lint, and
+   append a substantive `lint` or `fix` entry to `log.md`.
 
-#### Step-by-Step Procedure:
+## Operational guarantees
 
-##### 1. Scan All Pages
+- `bob lint` does not write the registry, pages, indices, extraction state, or
+  log and returns success when a report was produced, even when issues exist.
+- A missing `wiki/` directory is a command failure and returns a non-zero code.
+- Paths and counts are deterministic so repeated reports can be compared.
+- Index files use the 10,000-token hard limit; managed pages use a 5,000-token
+  review threshold; extraction chunks use the runner's configured character
+  limit.
 
-**Read systematically**:
-- List all files in wiki/ recursively
-- Read Pages in batches (up to 5 at once)
-- Track all entities, concepts, sources, analyses
+## Quality checklist
 
-**Build mental map**:
-- All Page titles and paths
-- All cross-references (who links to whom)
-- All concepts mentioned
-- All entities mentioned
-- All sources cited
-
-##### 2. Check for Issues
-
-**A. Contradictions (Priority: HIGH)**
-- Same concept described differently in multiple Pages
-- Conflicting claims about same entity
-- Inconsistent terminology
-
-Example:
-```
-- [Page A](wiki/concepts/ai-safety.md) defines alignment as "X"
-- [Page B](wiki/concepts/alignment.md) defines alignment as "Y"
-- Contradiction: Different definitions of same concept
-```
-
-**B. Staleness (Priority: HIGH)**
-- Claims superseded by newer sources
-- Outdated information
-- Missing recent developments
-
-Example:
-```
-- [Page](wiki/entities/openai.md) states "GPT-4 is latest model"
-- [Source](wiki/sources/new-article.md) mentions GPT-5
-- Staleness: Entity Page needs update
-```
-
-**C. Orphan Pages (Priority: MEDIUM)**
-- Pages with no inbound links
-- Isolated content not connected to wiki graph
-
-Example:
-```
-- [Page](wiki/concepts/obscure-theory.md) has no inbound references
-- Orphan: Should be linked from related concepts or archived
-```
-
-**D. Missing Concepts (Priority: MEDIUM)**
-- Concepts mentioned but not defined
-- Terms used without dedicated Page
-
-Example:
-```
-- "Constitutional AI" mentioned in [Page X](link), [Page Y](link)
-- No dedicated Page: wiki/concepts/constitutional-ai.md
-- Missing concept: Should create Page
-```
-
-**E. Broken Links (Priority: HIGH)**
-- References to non-existent Pages
-- Incorrect paths
-
-Example:
-```
-- [Page A](wiki/concepts/ml.md) links to [Page B](wiki/concepts/neural-nets.md)
-- Page B doesn't exist
-- Broken link: Fix path or create Page
-```
-
-**F. Missing Cross-References (Priority: LOW)**
-- Related Pages not linked
-- One-way links (not bidirectional)
-
-Example:
-```
-- [Page A](wiki/concepts/transformers.md) links to [Page B](wiki/concepts/attention.md)
-- Page B doesn't link back to Page A
-- Missing cross-ref: Add bidirectional link
-```
-
-##### 3. Generate Report
-
-**Format**:
-```markdown
-## Lint Report [YYYY-MM-DD]
-
-**Total Pages scanned**: X
-**Issues found**: Y
-
----
-
-### Contradictions (Priority: HIGH) - Count: X
-
-#### Issue 1: [Brief description]
-- **Pages involved**: [Page A](link), [Page B](link)
-- **Conflict**: [Description of contradiction]
-- **Recommendation**: [How to resolve]
-
----
-
-### Staleness (Priority: HIGH) - Count: X
-
-#### Issue 1: [Brief description]
-- **Page**: [Page](link)
-- **Problem**: [What's outdated]
-- **Source**: [Newer source](link)
-- **Recommendation**: [What to update]
-
----
-
-### Orphan Pages (Priority: MEDIUM) - Count: X
-
-#### Issue 1: [Page title]
-- **Page**: [Page](link)
-- **Problem**: No inbound references
-- **Recommendation**: Link from [suggested Pages] or archive
-
----
-
-### Missing Concepts (Priority: MEDIUM) - Count: X
-
-#### Issue 1: "[Concept name]"
-- **Mentioned in**: [Page X](link), [Page Y](link)
-- **Problem**: No dedicated Page
-- **Recommendation**: Create wiki/concepts/[concept-name].md
-
----
-
-### Broken Links (Priority: HIGH) - Count: X
-
-#### Issue 1: [Brief description]
-- **Source Page**: [Page](link)
-- **Broken link**: [Target path]
-- **Recommendation**: Fix path or create missing Page
-
----
-
-### Missing Cross-References (Priority: LOW) - Count: X
-
-#### Issue 1: [Brief description]
-- **Pages**: [Page A](link) → [Page B](link)
-- **Problem**: One-way link only
-- **Recommendation**: Add reciprocal link in Page B
-
----
-
-### Suggestions for Improvement
-
-**New sources to seek**:
-- Topic A: [Why it would be valuable]
-- Topic B: [Why it would be valuable]
-
-**New questions to explore**:
-- Question 1: [Why it's interesting]
-- Question 2: [Why it's interesting]
-
-**Potential reorganization**:
-- [Suggestion for better structure]
-
----
-
-### Statistics
-- Total entities: X
-- Total concepts: Y
-- Total sources: Z
-- Total analyses: W
-- Average cross-references per Page: N
-- Pages with <2 cross-refs: M
-```
-
-##### 4. Present Report to User
-- Show complete report
-- Highlight high-priority issues
-- Ask User to prioritize fixes
-
-##### 5. Execute Fixes (User-directed)
-- User reviews report
-- User specifies which issues to fix
-- Agent fixes issues one by one
-- Agent confirms each fix with User
-
-##### 6. Log Operation
-Append to log.md:
-```markdown
-## [YYYY-MM-DD HH:MM] lint | Health check complete
-
-Scanned X Pages across wiki.
-
-Issues found:
-- Contradictions: X (high priority)
-- Staleness: Y (high priority)
-- Orphans: Z (medium priority)
-- Missing concepts: W (medium priority)
-- Broken links: V (high priority)
-- Missing cross-refs: U (low priority)
-
-Key outcomes:
-- Generated comprehensive report
-- Identified [specific important issue]
-- Suggested [number] new sources to seek
-```
-
-#### Quality Checklist
-- [ ] All wiki/ subdirectories scanned
-- [ ] All issue types checked
-- [ ] Report is comprehensive and clear
-- [ ] Issues prioritized correctly
-- [ ] Recommendations are actionable
-- [ ] Statistics included
-- [ ] Log entry appended
+- [ ] Every category appears with an actionable count.
+- [ ] Every issue includes a repository-relative path and explanation.
+- [ ] Semantic findings are clearly distinguished from deterministic checks.
+- [ ] No remediation occurs without explicit user direction.

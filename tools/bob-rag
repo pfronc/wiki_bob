@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Wrapper for rag.py to provide a shorter `bob-rag` CLI.
+# Prefers a repository-local virtualenv when present, otherwise system python3.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PYTHON_BIN="$PROJECT_ROOT/.venv-rag/bin/python3"
+if [ ! -x "$PYTHON_BIN" ]; then
+  PYTHON_BIN="${PYTHON:-python3}"
+fi
+exec "$PYTHON_BIN" "$SCRIPT_DIR/rag.py" "$@"

@@ -1,0 +1,7 @@
+index/converted/**
+index/extractions/**
+index/rag/**
+index/index_*.md
+index/index.md
+log.md
+node_modules/**
