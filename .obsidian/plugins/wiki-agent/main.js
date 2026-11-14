@@ -23,7 +23,7 @@ async function renderMarkdownAnswer(MarkdownRenderer, app, markdown, element, so
   return MarkdownRenderer.render(app, markdown, element, sourcePath, component);
 }
 
-const VIEW_TYPE_AGENT = "quantum-wiki-agent-view";
+const VIEW_TYPE_AGENT = "wiki-agent-view";
 const DEFAULT_SETTINGS = {
   model: "gemma4:12b",
   endpoint: "http://localhost:11434"
@@ -61,12 +61,12 @@ const TOOL_DEFINITIONS = [
   }
 ];
 
-class QuantumWikiAgent extends Plugin {
+class WikiAgent extends Plugin {
   async onload() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     this.registerView(VIEW_TYPE_AGENT, (leaf) => new AgentView(leaf, this));
     this.addCommand({
-      id: "ask-quantum-wiki-agent",
+      id: "ask-wiki-agent",
       name: "Open local wiki agent tab",
       callback: () => this.activateView()
     });
@@ -188,7 +188,7 @@ class AgentView extends ItemView {
   }
 
   getDisplayText() {
-    return "Quantum Wiki Agent";
+    return " Wiki Agent";
   }
 
   getIcon() {
@@ -198,21 +198,21 @@ class AgentView extends ItemView {
   async onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.addClass("quantum-wiki-agent-view");
+    contentEl.addClass("wiki-agent-view");
 
     const header = contentEl.createDiv({ cls: "qwa-header" });
     header.createEl("h2", { text: "Ask your local wiki" });
     header.createEl("p", { text: `Read-only · ${this.plugin.settings.model} · ${this.plugin.settings.endpoint}` });
 
     const input = contentEl.createEl("textarea", {
-      cls: "quantum-agent-input",
+      cls: "agent-input",
       attr: { rows: "5", placeholder: "Ask about concepts in your vault…" }
     });
-    const controls = contentEl.createDiv({ cls: "quantum-agent-controls" });
+    const controls = contentEl.createDiv({ cls: "agent-controls" });
     const button = controls.createEl("button", { text: "Ask" });
     button.addClass("mod-cta");
-    const status = contentEl.createEl("p", { cls: "quantum-agent-status" });
-    const output = contentEl.createDiv({ cls: "quantum-agent-output" });
+    const status = contentEl.createEl("p", { cls: "agent-status" });
+    const output = contentEl.createDiv({ cls: "agent-output" });
 
     this.registerDomEvent(output, "click", (event) => {
       const eventTarget = event.target;
@@ -272,7 +272,7 @@ class AgentSettingTab extends PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Quantum Wiki Agent" });
+    containerEl.createEl("h2", { text: "Wiki Agent" });
     new Setting(containerEl)
       .setName("Ollama model")
       .setDesc("Use a chat model installed on the configured Ollama server.")
@@ -306,4 +306,4 @@ class AgentSettingTab extends PluginSettingTab {
   }
 }
 
-module.exports = QuantumWikiAgent;
+module.exports = WikiAgent;

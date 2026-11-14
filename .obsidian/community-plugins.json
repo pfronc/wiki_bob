@@ -3,5 +3,6 @@
   "calendar",
   "callout-manager",
   "quantum-wiki-agent",
-  "jupyter-notebook"
+  "jupyter-notebook",
+  "wiki-agent"
 ]

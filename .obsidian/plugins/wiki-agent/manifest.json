@@ -1,6 +1,6 @@
 {
-  "id": "quantum-wiki-agent",
-  "name": "Quantum Wiki Agent",
+  "id": "wiki-agent",
+  "name": "Wiki Agent",
   "version": "0.3.1",
   "minAppVersion": "1.5.0",
   "description": "Ask your local Ollama model questions about this vault. Read-only prototype.",
